@@ -37,6 +37,16 @@ public struct RoutineContainer: Sendable {
         containerURL?.appending(path: "PostureSessions", directoryHint: .isDirectory)
     }
 
+    /// Routines composed in the runner app, waiting to be made real.
+    public var draftsDir: URL? {
+        containerURL?.appending(path: "RoutineDrafts", directoryHint: .isDirectory)
+    }
+
+    /// The exercises a routine can be composed from.
+    public var catalogURL: URL? {
+        containerURL?.appending(path: "exercises.\(Self.fileExtension)")
+    }
+
     public static let fileExtension = "json"
 
     /// ISO-8601 with fractional seconds — **millisecond precision**.
@@ -138,6 +148,54 @@ public struct RoutineContainer: Sendable {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appending(path: "\(session.sessionID.uuidString).\(Self.fileExtension)")
         try Self.encoder().encode(session).write(to: url, options: .atomic)
+    }
+
+    // MARK: - Exercise catalog
+
+    /// Publishes the exercises a routine can be composed from. One file,
+    /// rewritten whole — an exercise that was deleted must stop being
+    /// offered, and there is no sane merge of two versions of a catalog.
+    public func writeCatalog(_ catalog: ExerciseCatalogFile) throws {
+        guard let url = catalogURL, let dir = containerURL else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Self.encoder().encode(catalog).write(to: url, options: .atomic)
+    }
+
+    public func readCatalog() -> ExerciseCatalogFile? {
+        guard let url = catalogURL, let data = try? Data(contentsOf: url) else { return nil }
+        return try? Self.decoder().decode(ExerciseCatalogFile.self, from: data)
+    }
+
+    // MARK: - Routine drafts
+
+    /// Hands a composed routine over to be materialised.
+    public func writeDraft(_ draft: RoutineDraftFile) throws {
+        guard let dir = draftsDir else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appending(path: "\(draft.draftID.uuidString).\(Self.fileExtension)")
+        try Self.encoder().encode(draft).write(to: url, options: .atomic)
+    }
+
+    /// Drafts waiting, oldest first, paired with the file each came from.
+    /// As with sessions, delete a file only once its plan exists.
+    public func pendingDrafts() -> [(url: URL, draft: RoutineDraftFile)] {
+        guard let dir = draftsDir,
+              let urls = try? FileManager.default.contentsOfDirectory(
+                at: dir, includingPropertiesForKeys: nil
+              )
+        else { return [] }
+
+        let decoder = Self.decoder()
+        return urls
+            .filter { $0.pathExtension == Self.fileExtension }
+            .compactMap { url -> (URL, RoutineDraftFile)? in
+                guard let data = try? Data(contentsOf: url),
+                      let draft = try? decoder.decode(RoutineDraftFile.self, from: data)
+                else { return nil }
+                return (url, draft)
+            }
+            .sorted { $0.1.createdAt < $1.1.createdAt }
+            .map { (url: $0.0, draft: $0.1) }
     }
 
     /// Finished sessions waiting, oldest first, paired with the file each came
