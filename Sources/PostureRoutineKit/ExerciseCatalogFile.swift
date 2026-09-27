@@ -58,3 +58,35 @@ public struct CatalogExerciseFile: Codable, Identifiable, Sendable, Equatable {
         self.suggestedHoldSec = suggestedHoldSec
     }
 }
+
+public extension ExerciseCatalogFile {
+    /// Exercises matching `query` by name or family, grouped by family.
+    ///
+    /// Exact matches win outright. Only when there are none does it fall
+    /// back to close ones, so a normal search behaves exactly as before and
+    /// a typo gets rescued rather than returning an empty screen.
+    func search(_ query: String) -> [(family: String, exercises: [CatalogExerciseFile])] {
+        let term = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !term.isEmpty else { return byFamily }
+
+        let exact = filtered { exercise, family in
+            FuzzySearch.contains(exercise.name, query: term)
+                || FuzzySearch.contains(family, query: term)
+        }
+        guard exact.isEmpty else { return exact }
+
+        return filtered { exercise, family in
+            FuzzySearch.isClose(exercise.name, query: term)
+                || FuzzySearch.isClose(family, query: term)
+        }
+    }
+
+    private func filtered(
+        _ isIncluded: (CatalogExerciseFile, String) -> Bool
+    ) -> [(family: String, exercises: [CatalogExerciseFile])] {
+        byFamily.compactMap { group in
+            let hits = group.exercises.filter { isIncluded($0, group.family) }
+            return hits.isEmpty ? nil : (family: group.family, exercises: hits)
+        }
+    }
+}
