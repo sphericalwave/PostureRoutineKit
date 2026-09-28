@@ -22,8 +22,16 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
     public var roundsCompleted: Int
     public var holds: [PostureHoldFile]
     public var notes: String
+    /// A comment per exercise, written on the summary. Optional on the wire
+    /// so sessions written before it existed still decode.
+    public var exerciseNotes: [PostureExerciseNoteFile]?
 
     public var id: UUID { sessionID }
+
+    /// The comment left on one exercise, or "".
+    public func note(for skillID: UUID) -> String {
+        exerciseNotes?.first { $0.skillID == skillID }?.text ?? ""
+    }
 
     public init(
         sessionID: UUID = UUID(),
@@ -33,7 +41,8 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
         endedAt: Date,
         roundsCompleted: Int,
         holds: [PostureHoldFile],
-        notes: String = ""
+        notes: String = "",
+        exerciseNotes: [PostureExerciseNoteFile]? = nil
     ) {
         self.sessionID = sessionID
         self.planID = planID
@@ -43,6 +52,7 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
         self.roundsCompleted = roundsCompleted
         self.holds = holds
         self.notes = notes
+        self.exerciseNotes = exerciseNotes
     }
 
     /// Total time actually spent holding, which is not the same as the wall
@@ -119,5 +129,18 @@ public struct PostureHRSampleFile: Codable, Sendable, Equatable {
     public init(t: Double, bpm: Int) {
         self.t = t
         self.bpm = bpm
+    }
+}
+
+public struct PostureExerciseNoteFile: Codable, Sendable, Equatable {
+    public var skillID: UUID
+    /// As it was at run time, like `PostureHoldFile.name`.
+    public var name: String
+    public var text: String
+
+    public init(skillID: UUID, name: String, text: String) {
+        self.skillID = skillID
+        self.name = name
+        self.text = text
     }
 }

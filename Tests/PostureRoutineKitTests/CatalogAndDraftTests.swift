@@ -99,3 +99,23 @@ final class CatalogAndDraftTests: XCTestCase {
         XCTAssertEqual(back.entries, original.entries)
     }
 }
+
+final class ExerciseNoteTests: XCTestCase {
+    func testASessionWrittenBeforeExerciseNotesStillDecodes() throws {
+        let json = #"{"sessionID":"6F9619FF-8B86-D011-B42D-00C04FC964FF","planID":"6F9619FF-8B86-D011-B42D-00C04FC964FE","routineName":"Hips","startedAt":"2026-09-27T10:00:00.000Z","endedAt":"2026-09-27T10:20:00.000Z","roundsCompleted":1,"holds":[],"notes":""}"#
+        let file = try RoutineContainer.decoder().decode(PostureSessionFile.self, from: Data(json.utf8))
+        XCTAssertNil(file.exerciseNotes)
+        XCTAssertEqual(file.note(for: UUID()), "")
+    }
+
+    func testExerciseNotesRoundTrip() throws {
+        let squat = UUID()
+        let file = PostureSessionFile(planID: UUID(), routineName: "Hips", startedAt: Date(), endedAt: Date(),
+                                      roundsCompleted: 1, holds: [],
+                                      exerciseNotes: [PostureExerciseNoteFile(skillID: squat, name: "Hunter squat",
+                                                                              text: "toes feel tight")])
+        let back = try RoutineContainer.decoder().decode(PostureSessionFile.self,
+                                                         from: RoutineContainer.encoder().encode(file))
+        XCTAssertEqual(back.note(for: squat), "toes feel tight")
+    }
+}
