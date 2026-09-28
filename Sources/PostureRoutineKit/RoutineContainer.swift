@@ -37,6 +37,13 @@ public struct RoutineContainer: Sendable {
         containerURL?.appending(path: "PostureSessions", directoryHint: .isDirectory)
     }
 
+    /// Past practices the publisher already imported, handed back so the
+    /// runner can list them — it kept no record of its own before it had a
+    /// history screen.
+    public var historyDir: URL? {
+        containerURL?.appending(path: "PostureHistory", directoryHint: .isDirectory)
+    }
+
     /// Routines composed in the runner app, waiting to be made real.
     public var draftsDir: URL? {
         containerURL?.appending(path: "RoutineDrafts", directoryHint: .isDirectory)
@@ -148,6 +155,39 @@ public struct RoutineContainer: Sendable {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let url = dir.appending(path: "\(session.sessionID.uuidString).\(Self.fileExtension)")
         try Self.encoder().encode(session).write(to: url, options: .atomic)
+    }
+
+    // MARK: - History
+
+    /// Hands a past practice back to the runner. Named by session, so writing
+    /// the same one twice replaces rather than duplicates.
+    public func writeHistory(_ session: PostureSessionFile) throws {
+        guard let dir = historyDir else { return }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appending(path: "\(session.sessionID.uuidString).\(Self.fileExtension)")
+        try Self.encoder().encode(session).write(to: url, options: .atomic)
+    }
+
+    /// Past practices waiting to be taken in, oldest first. The caller deletes
+    /// each file once it has its own copy.
+    public func pendingHistory() -> [(url: URL, session: PostureSessionFile)] {
+        read(PostureSessionFile.self, in: historyDir)
+            .sorted { $0.1.endedAt < $1.1.endedAt }
+            .map { (url: $0.0, session: $0.1) }
+    }
+
+    private func read<T: Decodable>(_ type: T.Type, in dir: URL?) -> [(URL, T)] {
+        guard let dir,
+              let urls = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
+        else { return [] }
+        let decoder = Self.decoder()
+        return urls
+            .filter { $0.pathExtension == Self.fileExtension }
+            .compactMap { url in
+                guard let data = try? Data(contentsOf: url),
+                      let value = try? decoder.decode(T.self, from: data) else { return nil }
+                return (url, value)
+            }
     }
 
     // MARK: - Exercise catalog
