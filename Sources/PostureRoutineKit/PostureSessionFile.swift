@@ -28,6 +28,10 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
     /// The assist each exercise was held with. Optional on the wire, like
     /// `exerciseNotes`.
     public var exerciseAssists: [PostureExerciseAssistFile]?
+    /// Bumped each time the practice is corrected after the fact. Nil is the
+    /// original; an importer that already has this session replaces what it
+    /// logged when a higher revision arrives.
+    public var revision: Int?
 
     public var id: UUID { sessionID }
 
@@ -51,7 +55,8 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
         holds: [PostureHoldFile],
         notes: String = "",
         exerciseNotes: [PostureExerciseNoteFile]? = nil,
-        exerciseAssists: [PostureExerciseAssistFile]? = nil
+        exerciseAssists: [PostureExerciseAssistFile]? = nil,
+        revision: Int? = nil
     ) {
         self.sessionID = sessionID
         self.planID = planID
@@ -63,6 +68,7 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
         self.notes = notes
         self.exerciseNotes = exerciseNotes
         self.exerciseAssists = exerciseAssists
+        self.revision = revision
     }
 
     /// Total time actually spent holding, which is not the same as the wall

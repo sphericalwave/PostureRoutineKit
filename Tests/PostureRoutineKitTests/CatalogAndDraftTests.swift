@@ -123,6 +123,7 @@ final class ExerciseNoteTests: XCTestCase {
         let json = #"{"sessionID":"6F9619FF-8B86-D011-B42D-00C04FC964FF","planID":"6F9619FF-8B86-D011-B42D-00C04FC964FE","routineName":"Hips","startedAt":"2026-09-27T10:00:00.000Z","endedAt":"2026-09-27T10:20:00.000Z","roundsCompleted":1,"holds":[],"notes":""}"#
         let file = try RoutineContainer.decoder().decode(PostureSessionFile.self, from: Data(json.utf8))
         XCTAssertNil(file.assist(for: UUID()))
+        XCTAssertNil(file.revision)
 
         let entry = #"{"skillID":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"Pistol","order":0,"holdSec":30,"positionNames":[],"note":""}"#
         let decoded = try RoutineContainer.decoder().decode(RoutineEntryFile.self, from: Data(entry.utf8))
