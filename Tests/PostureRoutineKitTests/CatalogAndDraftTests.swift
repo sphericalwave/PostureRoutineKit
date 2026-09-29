@@ -118,4 +118,27 @@ final class ExerciseNoteTests: XCTestCase {
                                                          from: RoutineContainer.encoder().encode(file))
         XCTAssertEqual(back.note(for: squat), "toes feel tight")
     }
+
+    func testAssistsAreOptionalOnTheWire() throws {
+        let json = #"{"sessionID":"6F9619FF-8B86-D011-B42D-00C04FC964FF","planID":"6F9619FF-8B86-D011-B42D-00C04FC964FE","routineName":"Hips","startedAt":"2026-09-27T10:00:00.000Z","endedAt":"2026-09-27T10:20:00.000Z","roundsCompleted":1,"holds":[],"notes":""}"#
+        let file = try RoutineContainer.decoder().decode(PostureSessionFile.self, from: Data(json.utf8))
+        XCTAssertNil(file.assist(for: UUID()))
+
+        let entry = #"{"skillID":"6F9619FF-8B86-D011-B42D-00C04FC964FF","name":"Pistol","order":0,"holdSec":30,"positionNames":[],"note":""}"#
+        let decoded = try RoutineContainer.decoder().decode(RoutineEntryFile.self, from: Data(entry.utf8))
+        XCTAssertNil(decoded.assistLbs)
+        XCTAssertNil(decoded.assistSetup)
+    }
+
+    func testAssistsRoundTrip() throws {
+        let pistol = UUID()
+        let file = PostureSessionFile(planID: UUID(), routineName: "Legs", startedAt: Date(), endedAt: Date(),
+                                      roundsCompleted: 1, holds: [],
+                                      exerciseAssists: [PostureExerciseAssistFile(skillID: pistol, name: "Pistol",
+                                                                                  lbs: 35, setup: "Overhead pulley")])
+        let back = try RoutineContainer.decoder().decode(PostureSessionFile.self,
+                                                         from: RoutineContainer.encoder().encode(file))
+        XCTAssertEqual(back.assist(for: pistol)?.lbs, 35)
+        XCTAssertEqual(back.assist(for: pistol)?.label, "Overhead pulley \u{2212}35 lb")
+    }
 }

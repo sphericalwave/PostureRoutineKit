@@ -25,12 +25,20 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
     /// A comment per exercise, written on the summary. Optional on the wire
     /// so sessions written before it existed still decode.
     public var exerciseNotes: [PostureExerciseNoteFile]?
+    /// The assist each exercise was held with. Optional on the wire, like
+    /// `exerciseNotes`.
+    public var exerciseAssists: [PostureExerciseAssistFile]?
 
     public var id: UUID { sessionID }
 
     /// The comment left on one exercise, or "".
     public func note(for skillID: UUID) -> String {
         exerciseNotes?.first { $0.skillID == skillID }?.text ?? ""
+    }
+
+    /// The assist one exercise was held with, if any.
+    public func assist(for skillID: UUID) -> PostureExerciseAssistFile? {
+        exerciseAssists?.first { $0.skillID == skillID }
     }
 
     public init(
@@ -42,7 +50,8 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
         roundsCompleted: Int,
         holds: [PostureHoldFile],
         notes: String = "",
-        exerciseNotes: [PostureExerciseNoteFile]? = nil
+        exerciseNotes: [PostureExerciseNoteFile]? = nil,
+        exerciseAssists: [PostureExerciseAssistFile]? = nil
     ) {
         self.sessionID = sessionID
         self.planID = planID
@@ -53,6 +62,7 @@ public struct PostureSessionFile: Codable, Identifiable, Sendable, Equatable {
         self.holds = holds
         self.notes = notes
         self.exerciseNotes = exerciseNotes
+        self.exerciseAssists = exerciseAssists
     }
 
     /// Total time actually spent holding, which is not the same as the wall
@@ -142,5 +152,28 @@ public struct PostureExerciseNoteFile: Codable, Sendable, Equatable {
         self.skillID = skillID
         self.name = name
         self.text = text
+    }
+}
+
+public struct PostureExerciseAssistFile: Codable, Sendable, Equatable {
+    public var skillID: UUID
+    /// As it was at run time, like `PostureHoldFile.name`.
+    public var name: String
+    /// Pounds taken off. Positive; the importer logs it as negative load.
+    public var lbs: Double
+    /// "Overhead pulley" — may be empty.
+    public var setup: String
+
+    public init(skillID: UUID, name: String, lbs: Double, setup: String = "") {
+        self.skillID = skillID
+        self.name = name
+        self.lbs = lbs
+        self.setup = setup
+    }
+
+    /// "Overhead pulley −35 lb", or "−35 lb" with no setup named.
+    public var label: String {
+        let amount = "\u{2212}\(lbs.formatted(.number.precision(.fractionLength(0...1)))) lb"
+        return setup.isEmpty ? amount : "\(setup) \(amount)"
     }
 }

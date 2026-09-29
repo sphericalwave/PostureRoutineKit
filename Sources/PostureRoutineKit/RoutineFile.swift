@@ -78,6 +78,13 @@ public struct RoutineEntryFile: Codable, Identifiable, Sendable, Equatable {
     /// through, in order — "Right", "Centre", "Left".
     public var positionNames: [String]
     public var note: String
+    /// Pounds taken off a bodyweight posture — a pulley counterweight, a
+    /// band. Positive; the log records it as negative load. Optional on the
+    /// wire so routines written before it existed still decode.
+    public var assistLbs: Double?
+    /// What gives the assist — "Overhead pulley" — so the setup can be
+    /// recreated.
+    public var assistSetup: String?
 
     public var id: UUID { skillID }
 
@@ -87,7 +94,9 @@ public struct RoutineEntryFile: Codable, Identifiable, Sendable, Equatable {
         order: Int = 0,
         holdSec: Int = 0,
         positionNames: [String] = [],
-        note: String = ""
+        note: String = "",
+        assistLbs: Double? = nil,
+        assistSetup: String? = nil
     ) {
         self.skillID = skillID
         self.name = name
@@ -95,6 +104,8 @@ public struct RoutineEntryFile: Codable, Identifiable, Sendable, Equatable {
         self.holdSec = holdSec
         self.positionNames = positionNames
         self.note = note
+        self.assistLbs = assistLbs
+        self.assistSetup = assistSetup
     }
 
     /// One name per hold: a single unnamed hold, or one per position.
