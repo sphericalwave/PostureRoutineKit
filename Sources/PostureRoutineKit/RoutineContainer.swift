@@ -17,13 +17,24 @@ import Foundation
 
 public struct RoutineContainer: Sendable {
     public let groupID: String
+    /// Set only by `init(rootURL:)`: a plain folder used in place of the
+    /// App Group, so tests never read or write the apps' real files.
+    private let rootURL: URL?
 
     public init(groupID: String) {
         self.groupID = groupID
+        self.rootURL = nil
+    }
+
+    /// The same drop box laid out under any folder — for tests, which must
+    /// not touch the App Group the installed apps share.
+    public init(rootURL: URL) {
+        self.groupID = ""
+        self.rootURL = rootURL
     }
 
     public var containerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID)
+        rootURL ?? FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID)
     }
 
     /// Routines the publisher offers. Rewritten wholesale on every change, so
